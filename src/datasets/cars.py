@@ -96,7 +96,7 @@ class PytorchStanfordCars(VisionDataset):
     def download(self) -> None:
         if self._check_exists():
             return
-
+        # print("Resolved path:", args.data_location)
         download_and_extract_archive(
             url="https://ai.stanford.edu/~jkrause/cars/car_devkit.tgz",
             download_root=str(self._base_folder),

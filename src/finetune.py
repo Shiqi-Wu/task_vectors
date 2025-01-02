@@ -1,7 +1,11 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # Only GPU 1 is visible
 import time
-
 import torch
+import sys
+
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.args import parse_arguments
 from src.datasets.common import get_dataloader, maybe_dictionarize
@@ -20,7 +24,7 @@ def finetune(args):
     ckpdir = os.path.join(args.save, train_dataset)
 
     # Check if checkpoints already exist
-    zs_path = os.path.join(args.save, train_dataset, 'checkpoint_0.pt')  
+    zs_path = os.path.join(args.save, train_dataset, 'checkpoint_0.pt')
     ft_path = os.path.join(args.save, train_dataset, f'checkpoint_{args.epochs}.pt')
     if os.path.exists(zs_path) and os.path.exists(ft_path):
         print(f'Skipping fine-tuning because {ft_path} exists.')
@@ -32,6 +36,8 @@ def finetune(args):
     else:
         print('Building image encoder.')
         image_encoder = ImageEncoder(args, keep_lang=False)
+
+    print(args.data_location)
 
     classification_head = get_classification_head(args, train_dataset)
 
@@ -70,11 +76,14 @@ def finetune(args):
         model_path = os.path.join(ckpdir, f'zeroshot.pt')
         model.module.image_encoder.save(model_path)
 
+    loss_history = []
     for epoch in range(args.epochs):
         model = model.cuda()
         model.train()
         data_loader = get_dataloader(
             dataset, is_train=True, args=args, image_encoder=None)
+        
+        total_loss = 0.0
 
         for i, batch in enumerate(data_loader):
             start_time = time.time()
@@ -105,6 +114,12 @@ def finetune(args):
                     f"Train Epoch: {epoch} [{percent_complete:.0f}% {i}/{len(dataset.train_loader)}]\t"
                     f"Loss: {loss.item():.6f}\tData (t) {data_time:.3f}\tBatch (t) {batch_time:.3f}", flush=True
                 )
+            total_loss += loss.item()
+        total_loss /= len(data_loader)
+        loss_history.append(total_loss)
+    torch.save(loss_history, os.path.join(ckpdir, 'loss_history.pt'))
+    print('Finished Training, saved to', ckpdir)
+
 
     # Evaluate
     image_encoder = model.module.image_encoder
@@ -118,9 +133,17 @@ def finetune(args):
 
 
 if __name__ == '__main__':
-    data_location = '<your_data_location>'
+    data_location = "/home/shiqi/code/task_vectors/experimental_results/data"
     models = ['ViT-B-32', 'ViT-B-16', 'ViT-L-14']
-    datasets = ['Cars', 'DTD', 'EuroSAT', 'GTSRB', 'MNIST', 'RESISC45', 'SUN397', 'SVHN']
+    datasets = ['EuroSAT', 'GTSRB', 'MNIST','SUN397', 'SVHN']
+    # datasets = ['Cars', 'DTD', 'EuroSAT', 'GTSRB', 'MNIST', 'RESISC45', 'SUN397', 'SVHN']
+    """
+    Cars: need to download from kaggle and change the codes in src/datasets/cars.py
+    RESISC45: cannot get access to the dataset
+    SUN397: too large (39GB), link: http://vision.princeton.edu/projects/2010/SUN/SUN397.tar.gz
+    SVHN
+    """
+
     epochs = {
         'Cars': 35,
         'DTD': 76,
@@ -132,6 +155,17 @@ if __name__ == '__main__':
         'SVHN': 4,
         'ImageNet': 4
     }
+    # epochs = {
+    #     'Cars': 1,
+    #     'DTD': 1,
+    #     'EuroSAT': 1,
+    #     'GTSRB': 1,
+    #     'MNIST': 1,
+    #     'RESISC45': 1,
+    #     'SUN397': 1,
+    #     'SVHN': 1,
+    #     'ImageNet': 1
+    # }
 
     for model in models:
         for dataset in datasets:
