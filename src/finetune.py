@@ -134,8 +134,11 @@ def finetune(args):
 
 if __name__ == '__main__':
     data_location = "/home/shiqi/code/task_vectors/experimental_results/data"
-    models = ['ViT-B-32', 'ViT-B-16', 'ViT-L-14']
-    datasets = ['EuroSAT', 'GTSRB', 'MNIST','SUN397', 'SVHN']
+    # models = ['ViT-B-32', 'ViT-B-16', 'ViT-L-14']
+    models = ['ViT-L-14']
+
+    datasets = ['DTD', 'EuroSAT', 'GTSRB', 'MNIST', 'SVHN']
+    # datasets = ['DTD', 'EuroSAT', 'GTSRB', 'MNIST', 'SVHN']
     # datasets = ['Cars', 'DTD', 'EuroSAT', 'GTSRB', 'MNIST', 'RESISC45', 'SUN397', 'SVHN']
     """
     Cars: need to download from kaggle and change the codes in src/datasets/cars.py
